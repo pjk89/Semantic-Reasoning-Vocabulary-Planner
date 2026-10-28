@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocabulary Lesson</title>
+    <style>
+:root { --primary: #3772C4; --secondary: #6BCAA1; --background: #3772C4; --surface: #FFFFFF; --text-primary: #FFFFFF; --text-secondary: #E0E0E0; --border: #E5E7EB; --radius: 8px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background-color: var(--background); color: var(--text-primary); line-height: 1.6; display: flex; justify-content: center; padding: 20px; margin: 0; min-height: 100vh; }
+.container { max-width: 1400px; width: 95%; margin: 0 auto; }
+.lesson-section { margin-bottom: 60px; padding-bottom: 40px; }
+.lesson-section:last-child { margin-bottom: 0; padding-bottom: 0; }
+.header-section { text-align: center; margin-bottom: 30px; }
+h1.word-reveal { font-size: 3.5rem; color: #FFFFFF; text-transform: lowercase; margin-bottom: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 15px; }
+h1.word-reveal::before { content: '🔊'; font-size: 1.5rem; background: rgba(255,255,255,0.2); border-radius: 50%; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.meaning { font-size: 1.25rem; color: #FFFFFF; margin-top: 15px; font-weight: 500; }
+.controls { display: flex; justify-content: center; margin-bottom: 20px; }
+.toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; color: #FFFFFF; }
+.toggle-switch { position: relative; width: 44px; height: 24px; background: rgba(255,255,255,0.3); border-radius: 12px; transition: background 0.3s; }
+.toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: transform 0.3s; }
+input[type="checkbox"]:checked + .toggle-switch { background: var(--secondary); }
+input[type="checkbox"]:checked + .toggle-switch::after { transform: translateX(20px); }
+input[type="checkbox"] { display: none; }
+.grid-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin-bottom: 40px; }
+@media (min-width: 1024px) { .grid-gallery { grid-template-columns: repeat(3, 1fr); } }
+.grid-item { display: flex; flex-direction: column; background: transparent; overflow: hidden; page-break-inside: avoid; }
+.grid-item img { width: 100%; aspect-ratio: 4/3; object-fit: cover; cursor: pointer; transition: transform 0.2s; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.grid-item img:hover { transform: scale(1.02); }
+.caption { display: none; padding: 12px; font-size: 1rem; text-align: center; font-style: italic; color: #FFFFFF; background: rgba(0,0,0,0.5); border-radius: 4px; margin-top: 5px; }
+.show-captions .caption { display: block; }
+.quiz-section { background: var(--surface); color: #333333; padding: 40px; border-radius: var(--radius); text-align: center; page-break-inside: avoid; max-width: 800px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.quiz-question { font-size: 1.5rem; font-weight: 600; margin-bottom: 25px; color: #111827; }
+.quiz-options { display: flex; flex-direction: column; gap: 15px; margin: 0 auto; }
+.quiz-option { background: #F9FAFB; border: 2px solid var(--border); padding: 15px 20px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; transition: all 0.2s; text-align: left; }
+.quiz-option:hover { border-color: var(--primary); background: #F3F6FA; }
+.quiz-option.correct { background: #D1FAE5; border-color: #10B981; color: #065F46; }
+.quiz-option.wrong { background: #FEE2E2; border-color: #EF4444; color: #991B1B; }
+.feedback { margin-top: 20px; font-size: 1.2rem; font-weight: 600; min-height: 30px; }
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; padding: 20px; }
+.modal-overlay.active { opacity: 1; pointer-events: auto; }
+.modal-img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.modal-caption-container { margin-top: 20px; display: flex; flex-direction: column; align-items: center; min-height: 60px; }
+.modal-caption { color: white; font-size: 1.5rem; font-style: italic; text-align: center; max-width: 800px; display: none; }
+.modal-caption.visible { display: block; }
+.reveal-caption-btn { background: var(--secondary); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 1.1rem; font-weight: 600; font-family: inherit; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.reveal-caption-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+.modal-close { position: absolute; top: 20px; right: 30px; color: white; font-size: 3rem; cursor: pointer; line-height: 1; opacity: 0.8; }
+.modal-close:hover { opacity: 1; }
+@media print { 
+    body { background: white !important; color: black !important; padding: 0; } 
+    h1.word-reveal { color: black !important; }
+    h1.word-reveal::before { display: none; }
+    .meaning { color: black !important; }
+    .container { box-shadow: none; border: none; padding: 0; width: 100%; max-width: none; } 
+    .lesson-section { page-break-after: always; border: none; margin-bottom: 0; } 
+    .controls, .modal-overlay { display: none !important; } 
+    .caption { display: block !important; color: black !important; background: transparent !important; } 
+    .grid-item img { box-shadow: none !important; }
+    .quiz-section { box-shadow: none !important; background: white !important; border: 1px solid #ccc; }
+    .quiz-option { break-inside: avoid; }
+}
+</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+const CURRENT_LESSONS = [
+  {
+    "word": "neutral",
+    "context_sentence": "No context sentence was provided.",
+    "examples": [
+      {
+        "visual_description": "A calm classroom corner with blue mats and a small table. A boy and a girl sit on stools by a crayon box, each gripping one end of a big blue crayon. Their brows are furrowed, and their shoulders lean toward the crayon. A friendly teacher kneels between them, holding up an open hand to pause the tug, then looks calmly at each child. The child on the left pouts, while the child on the right holds tight. Morning sunlight comes through a window and warms the colored pencils and paper.",
+        "caption": "The teacher listened to each child and let both have a turn with the big crayon.",
+        "localImagePath": "images/word1-image01.png"
+      },
+      {
+        "visual_description": "A green school field after recess, with two soccer teams lined up in red and blue uniforms. Two players tug the ball from opposite ends, their faces tense and feet planted wide. A referee in a bright yellow vest stands halfway between them, arms stretched out level, palms facing down, eyes calm and steady. A scoreboard in the distance shows the same number for both sides. Other kids sit on a bench leaning forward, and late afternoon sun casts long shadows on the grass.",
+        "caption": "The referee stopped the game and looked carefully at both teams before choosing what to do.",
+        "localImagePath": "images/word1-image02.png"
+      },
+      {
+        "visual_description": "A kitchen table after dinner, with two parents and a child holding travel photos. The father holds a picture of snowy mountains, while the daughter holds a picture of a bright beach. They lean forward and glance at the boy at the table's end, who has a calm face and both hands flat on an open notebook. He writes one word under each picture and slides the notebook so all can see. Soft lamp light glows over the table, and a small cat curls near the chairs.",
+        "caption": "The boy listened to both trip ideas and let each person show why it looked fun.",
+        "localImagePath": "images/word1-image03.png"
+      }
+    ],
+    "quiz": {
+      "question": "The meaning of neutral is...",
+      "choices": [
+        "never sharing the crayon, like the blue box, stools, and table in the bright classroom corner",
+        "not choosing a side, like the teacher, referee, and boy who helped both children and both trip ideas fairly",
+        "not choosing a side, like the frowns, tugging hands, and lamp that show people are upset",
+        "always helping the red team, like the yellow vest, scoreboard, and long afternoon shadows"
+      ],
+      "correct_index": 1
+    }
+  }
+];
+</script>
+</head>
+<body>
+    <div id="app" class="container">
+        <!-- Screens will be dynamically rendered here -->
+    </div>
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof CURRENT_LESSONS === 'undefined' || !CURRENT_LESSONS.length) {
+        document.getElementById('app').innerHTML = '<h2>Error: Lesson data not found.</h2>';
+        return;
+    }
+    const app = document.getElementById('app');
+    
+    function render() {
+        app.innerHTML = '';
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = '<div class="modal-close">&times;</div><img class="modal-img" src="" alt=""><div class="modal-caption-container"><button class="reveal-caption-btn">Reveal Caption</button><div class="modal-caption"></div></div>';
+        document.body.appendChild(modal);
+        
+        const revealBtn = modal.querySelector('.reveal-caption-btn');
+        const captionDiv = modal.querySelector('.modal-caption');
+        
+        revealBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            captionDiv.classList.add('visible');
+            revealBtn.style.display = 'none';
+        });
+
+        modal.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+        
+        CURRENT_LESSONS.forEach((lesson, lessonIdx) => {
+            const section = document.createElement('div');
+            section.className = 'lesson-section';
+
+            const header = document.createElement('div');
+            header.className = 'header-section';
+            header.innerHTML = `<h1 class="word-reveal">${lesson.word}</h1><p class="meaning">Look at the pictures below. What do all three pictures have in common?</p>`;
+            section.appendChild(header);
+            
+            const controls = document.createElement('div');
+            controls.className = 'controls';
+            const toggleId = 'toggle-' + lessonIdx;
+            controls.innerHTML = `
+                <label class="toggle-label" for="${toggleId}">
+                    <input type="checkbox" id="${toggleId}">
+                    <div class="toggle-switch"></div>
+                    <span>Show Captions</span>
+                </label>
+            `;
+            section.appendChild(controls);
+
+            const toggleInput = controls.querySelector('input');
+            toggleInput.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    section.classList.add('show-captions');
+                } else {
+                    section.classList.remove('show-captions');
+                }
+            });
+
+            const grid = document.createElement('div');
+            grid.className = 'grid-gallery';
+            lesson.examples.forEach(ex => {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+                const img = document.createElement('img');
+                img.src = ex.localImagePath;
+                
+                img.addEventListener('click', () => {
+                    modal.querySelector('.modal-img').src = ex.localImagePath;
+                    captionDiv.textContent = `"${ex.caption}"`;
+                    captionDiv.classList.remove('visible');
+                    revealBtn.style.display = 'block';
+                    modal.classList.add('active');
+                });
+                
+                const caption = document.createElement('div');
+                caption.className = 'caption';
+                caption.textContent = `"${ex.caption}"`;
+                item.appendChild(img);
+                item.appendChild(caption);
+                grid.appendChild(item);
+            });
+            section.appendChild(grid);
+
+            const quizContainer = document.createElement('div');
+            quizContainer.className = 'quiz-section';
+            const qText = document.createElement('h2');
+            qText.className = 'quiz-question';
+            qText.textContent = lesson.quiz.question;
+            quizContainer.appendChild(qText);
+            
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'quiz-options';
+            let answered = false;
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback';
+            
+            lesson.quiz.choices.forEach((choice, index) => {
+                const opt = document.createElement('button');
+                opt.className = 'quiz-option';
+                opt.textContent = choice;
+                opt.onclick = () => {
+                    if (answered) return;
+                    answered = true;
+                    if (index === lesson.quiz.correct_index) {
+                        opt.classList.add('correct');
+                        feedback.textContent = 'Correct! Great job.';
+                        feedback.style.color = '#10B981';
+                    } else {
+                        opt.classList.add('wrong');
+                        feedback.textContent = 'Incorrect.';
+                        feedback.style.color = '#EF4444';
+                        optionsDiv.children[lesson.quiz.correct_index].classList.add('correct');
+                    }
+                };
+                optionsDiv.appendChild(opt);
+            });
+            quizContainer.appendChild(optionsDiv);
+            quizContainer.appendChild(feedback);
+            section.appendChild(quizContainer);
+
+            app.appendChild(section);
+        });
+    }
+    render();
+});
+</script>
+</body>
+</html>
