@@ -60,11 +60,61 @@ Return valid JSON exactly matching this structure, without markdown wrappers if 
             { role: 'user', content: userContent }
         ];
 
+        if (this.settings.aiProvider === 'qwen') {
+            if (!this.settings.qwenApiKey) {
+                throw new Error("Qwen API Key is missing. Please configure it in Settings.");
+            }
+            if (!this.settings.qwenProxyUrl) {
+                throw new Error("Qwen Proxy Worker URL is missing. Please configure it in Settings.");
+            }
+            return await this._callQwen(systemPrompt, userContent);
+        }
+
+        // Default: Cloudflare Workers AI
         if (!this.settings.cloudflareWorkerUrl) {
             throw new Error("Cloudflare Worker URL is not configured. Please configure it in Settings.");
         }
 
         return await this._callCloudflare(systemPrompt, userContent);
+    }
+
+    async _callQwen(systemPrompt, userPrompt) {
+        let url = this.settings.qwenProxyUrl;
+        if (!url.startsWith('http')) {
+            url = 'https://' + url;
+        }
+
+        const model = this.settings.qwenTextModel || 'qwen3.7-plus';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.settings.qwenApiKey}`
+            },
+            body: JSON.stringify({
+                type: 'text',
+                model: model,
+                systemPrompt: systemPrompt,
+                prompt: userPrompt
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Qwen API Error: ${response.status} - ${errText}`);
+        }
+
+        const data = await response.json();
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            return this._parseJson(data.choices[0].message.content);
+        } else if (data.response) {
+            return this._parseJson(data.response);
+        } else if (data.result && data.result.response) {
+            return this._parseJson(data.result.response);
+        } else {
+            return this._parseJson(data);
+        }
     }
 
     async _callCloudflare(systemPrompt, userPrompt) {

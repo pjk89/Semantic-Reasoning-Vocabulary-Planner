@@ -13,3 +13,6 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Local development and reference materials
+reference/
+

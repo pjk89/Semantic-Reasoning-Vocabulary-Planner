@@ -35,9 +35,52 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="cloudflareWorkerUrl">Cloudflare Worker URL</label>
-                    <input type="text" id="cloudflareWorkerUrl" placeholder="https://my-ai-worker.my-subdomain.workers.dev">
-                    <small style="color: var(--text-secondary); font-size: 0.8rem;">Your custom Cloudflare Worker endpoint for text and image generation.</small>
+                    <label for="aiProviderSelect">AI Service Provider</label>
+                    <select id="aiProviderSelect" class="full-width">
+                        <option value="cloudflare" selected>Cloudflare Workers AI (Personal Worker)</option>
+                        <option value="qwen">Qwen Cloud (Personal API Key)</option>
+                    </select>
+                </div>
+
+                <!-- Cloudflare Config -->
+                <div id="cloudflareConfigGroup">
+                    <div class="form-group">
+                        <label for="cloudflareWorkerUrl">Cloudflare Worker URL</label>
+                        <input type="text" id="cloudflareWorkerUrl" placeholder="https://my-ai-worker.my-subdomain.workers.dev">
+                        <small style="color: var(--text-secondary); font-size: 0.8rem;">Your custom Cloudflare Worker endpoint for text and image generation.</small>
+                    </div>
+                </div>
+
+                <!-- Qwen Cloud Config -->
+                <div id="qwenConfigGroup" class="hidden">
+                    <div class="form-group">
+                        <label for="qwenApiKey">Qwen API Key</label>
+                        <input type="password" id="qwenApiKey" placeholder="sk-...">
+                        <small style="color: var(--text-secondary); font-size: 0.8rem;">Your individual API key from qwencloud.com.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="qwenProxyUrl">Qwen Proxy Worker URL</label>
+                        <input type="text" id="qwenProxyUrl" placeholder="https://qwen-proxy.my-subdomain.workers.dev">
+                        <small style="color: var(--text-secondary); font-size: 0.8rem;">Cloudflare Worker proxy endpoint that forwards requests to Qwen Cloud with CORS.</small>
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <button type="button" id="fetchQwenModelsBtn" class="btn secondary full-width" style="margin-bottom: 5px;">Fetch Available Models</button>
+                        <small id="qwenModelsStatus" style="color: var(--text-secondary); font-size: 0.8rem; display: block; min-height: 1.2rem;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="qwenTextModelSelect">Qwen Text Model</label>
+                        <select id="qwenTextModelSelect" class="full-width">
+                            <option value="" disabled selected>Click 'Fetch Available Models' to load</option>
+                        </select>
+                        <small style="color: var(--text-secondary); font-size: 0.8rem;">Model used for vocabulary lesson generation.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="qwenImageModelSelect">Qwen Default Image Model</label>
+                        <select id="qwenImageModelSelect" class="full-width">
+                            <option value="" disabled selected>Click 'Fetch Available Models' to load</option>
+                        </select>
+                        <small style="color: var(--text-secondary); font-size: 0.8rem;">Default model used for image generation when using Qwen.</small>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -116,11 +159,17 @@
                     <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
                         <label for="initialImageProviderSelect"><strong>Image Model:</strong></label>
                         <select id="initialImageProviderSelect">
-                            <option value="cloudflare-phoenix" selected>Leonardo Phoenix (Default)</option>
-                            <option value="cloudflare-flux">FLUX.1 Schnell</option>
-                            <option value="cloudflare-sdxl">Stable Diffusion XL</option>
-                            <option value="cloudflare-sdxl-lightning">SDXL Lightning (Fast)</option>
-                            <option value="cloudflare-qwen">Alibaba Qwen Image 3.0 Pro</option>
+                            <optgroup label="Cloudflare Models" id="cfOptGroupInitial">
+                                <option value="cloudflare-phoenix" selected>Leonardo Phoenix (Default)</option>
+                                <option value="cloudflare-flux">FLUX.1 Schnell</option>
+                                <option value="cloudflare-sdxl">Stable Diffusion XL</option>
+                                <option value="cloudflare-sdxl-lightning">SDXL Lightning (Fast)</option>
+                            </optgroup>
+                            <optgroup label="Qwen Cloud Models" id="qwenOptGroupInitial">
+                                <option value="qwen-image-3-pro">Qwen Image 3.0 Pro</option>
+                                <option value="wan-2.7-image">Wan 2.7 Image</option>
+                                <option value="wan-2.7-image-pro">Wan 2.7 Image Pro</option>
+                            </optgroup>
                         </select>
                     </div>
                     <button id="approveQaBtn" class="btn primary full-width">Approve & Generate Images</button>
@@ -151,11 +200,17 @@
 
                 <div class="search-controls" style="display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 15px;">
                     <select id="imageProviderSelect">
-                        <option value="cloudflare-phoenix" selected>Leonardo Phoenix (Default)</option>
-                        <option value="cloudflare-flux">FLUX.1 Schnell</option>
-                        <option value="cloudflare-sdxl">Stable Diffusion XL</option>
-                        <option value="cloudflare-sdxl-lightning">SDXL Lightning (Fast)</option>
-                        <option value="cloudflare-qwen">Alibaba Qwen Image 3.0 Pro</option>
+                        <optgroup label="Cloudflare Models" id="cfOptGroupStep3">
+                            <option value="cloudflare-phoenix" selected>Leonardo Phoenix (Default)</option>
+                            <option value="cloudflare-flux">FLUX.1 Schnell</option>
+                            <option value="cloudflare-sdxl">Stable Diffusion XL</option>
+                            <option value="cloudflare-sdxl-lightning">SDXL Lightning (Fast)</option>
+                        </optgroup>
+                        <optgroup label="Qwen Cloud Models" id="qwenOptGroupStep3">
+                            <option value="qwen-image-3-pro">Qwen Image 3.0 Pro</option>
+                            <option value="wan-2.7-image">Wan 2.7 Image</option>
+                            <option value="wan-2.7-image-pro">Wan 2.7 Image Pro</option>
+                        </optgroup>
                     </select>
                     <button id="regenerateImageBtn" class="btn secondary">Regenerate Image</button>
                 </div>
