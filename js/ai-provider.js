@@ -1,10 +1,6 @@
 class AIProvider {
     constructor(settings) {
         this.settings = settings;
-        this.cfAccountId = settings.cloudflareAccountId;
-        this.cfToken = settings.cloudflareApiToken;
-        this.openRouterKey = settings.openRouterKey || 'sk-or-v1-0000000000000000000000000000000000000000000000000000000000000000';
-        this.openRouterModel = settings.aiModel || 'openrouter/free';
     }
 
     async generateLesson(word, contextSentence, numExamples = 3, gradeLevel = "Grade 3") {
@@ -64,27 +60,11 @@ Return valid JSON exactly matching this structure, without markdown wrappers if 
             { role: 'user', content: userContent }
         ];
 
-        // Try Cloudflare first if configured
-        if (this.settings.cloudflareWorkerUrl) {
-            // try {
-                return await this._callCloudflare(systemPrompt, userContent);
-            // } catch (e) {
-            //     console.warn("Cloudflare text generation failed, falling back to OpenRouter...", e);
-            //     // Fallthrough to OpenRouter
-            // }
+        if (!this.settings.cloudflareWorkerUrl) {
+            throw new Error("Cloudflare Worker URL is not configured. Please configure it in Settings.");
         }
 
-        // Fallback to OpenRouter (TEMPORARILY DISABLED)
-        /*
-        const fallbackMessages = [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userContent }
-        ];
-        const response = await this._callOpenRouter(fallbackMessages);
-        return this._parseJson(response);
-        */
-        
-        throw new Error("Cloudflare Worker URL is not configured or generation failed. (Fallbacks disabled)");
+        return await this._callCloudflare(systemPrompt, userContent);
     }
 
     async _callCloudflare(systemPrompt, userPrompt) {
@@ -126,32 +106,6 @@ Return valid JSON exactly matching this structure, without markdown wrappers if 
         } else {
             throw new Error("Unexpected response format from Cloudflare API.");
         }
-    }
-
-    async _callOpenRouter(messages) {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.openRouterKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://github.com/phil/vocabulary-planner',
-                'X-Title': 'Vocabulary Planner'
-            },
-            body: JSON.stringify({
-                model: this.openRouterModel,
-                messages: messages,
-                response_format: { type: "json_object" }
-            })
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-        const content = data.choices[0].message.content;
-        return this._parseJson(content);
     }
 
     _parseJson(content) {

@@ -15,8 +15,6 @@ class AppStorage {
             }
         }
         return {
-            openRouterKey: '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',
-            aiModel: 'openrouter/free',
             cloudflareWorkerUrl: '',
             generationMode: 'auto'
         };

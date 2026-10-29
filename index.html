@@ -35,19 +35,10 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="openRouterKey">OpenRouter API Key (Optional Override)</label>
-                    <input type="password" id="openRouterKey" placeholder="sk-or-v1-...">
-                </div>
-                <div class="form-group">
-                    <label for="aiModel">OpenRouter Text Model (Fallback)</label>
-                    <input type="text" id="aiModel" value="openrouter/free">
-                </div>
-                <div class="form-group">
                     <label for="cloudflareWorkerUrl">Cloudflare Worker URL</label>
                     <input type="text" id="cloudflareWorkerUrl" placeholder="https://my-ai-worker.my-subdomain.workers.dev">
-                    <small style="color: var(--text-secondary); font-size: 0.8rem;">Your custom Cloudflare Worker endpoint for bypassing CORS.</small>
+                    <small style="color: var(--text-secondary); font-size: 0.8rem;">Your custom Cloudflare Worker endpoint for text and image generation.</small>
                 </div>
-
             </div>
             <div class="modal-footer">
                 <button id="saveSettingsBtn" class="btn primary">Save Settings</button>
