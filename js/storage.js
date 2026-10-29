@@ -6,19 +6,26 @@ class AppStorage {
     }
 
     static getSettings() {
+        const defaults = {
+            aiProvider: 'cloudflare',
+            cloudflareWorkerUrl: '',
+            qwenApiKey: '',
+            qwenProxyUrl: '',
+            qwenTextModel: 'qwen3.7-plus',
+            qwenImageModel: 'qwen-image-3-pro',
+            qwenAvailableModels: null,
+            generationMode: 'auto'
+        };
+
         const data = localStorage.getItem(this.SETTINGS_KEY);
         if (data) {
             try {
-                return JSON.parse(data);
+                const parsed = JSON.parse(data);
+                return { ...defaults, ...parsed };
             } catch (e) {
                 console.error('Failed to parse settings', e);
             }
         }
-        return {
-            openRouterKey: '',
-            aiModel: 'openrouter/free',
-            cloudflareWorkerUrl: '',
-            generationMode: 'auto'
-        };
+        return defaults;
     }
 }

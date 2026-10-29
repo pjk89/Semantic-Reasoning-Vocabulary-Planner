@@ -81,8 +81,219 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Settings Modal ---
+    const aiProviderSelect = document.getElementById('aiProviderSelect');
+    const cloudflareConfigGroup = document.getElementById('cloudflareConfigGroup');
+    const qwenConfigGroup = document.getElementById('qwenConfigGroup');
+    const fetchQwenModelsBtn = document.getElementById('fetchQwenModelsBtn');
+    const qwenModelsStatus = document.getElementById('qwenModelsStatus');
+    const qwenTextModelSelect = document.getElementById('qwenTextModelSelect');
+    const qwenImageModelSelect = document.getElementById('qwenImageModelSelect');
+
+    function updateSettingsFormVisibility(provider) {
+        if (provider === 'qwen') {
+            cloudflareConfigGroup.classList.add('hidden');
+            qwenConfigGroup.classList.remove('hidden');
+        } else {
+            cloudflareConfigGroup.classList.remove('hidden');
+            qwenConfigGroup.classList.add('hidden');
+        }
+    }
+
+    function populateModelDropdowns(textModels, imageModels) {
+        const defaultImage = ['qwen-image-3-pro', 'wan-2.7-image', 'wan-2.7-image-pro'];
+
+        const hasFetchedText = textModels && textModels.length > 0;
+        const hasFetchedImage = imageModels && imageModels.length > 0;
+
+        const currentText = settings.qwenTextModel;
+        const currentImage = settings.qwenImageModel;
+
+        // 1. Text Model Dropdown
+        qwenTextModelSelect.innerHTML = '';
+        if (!hasFetchedText) {
+            const opt = document.createElement('option');
+            opt.value = currentText || '';
+            opt.textContent = currentText ? `Saved: ${currentText}` : "Click 'Fetch Available Models' to load";
+            opt.selected = true;
+            qwenTextModelSelect.appendChild(opt);
+        } else {
+            textModels.forEach(id => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = id;
+                if (id === currentText) opt.selected = true;
+                qwenTextModelSelect.appendChild(opt);
+            });
+
+            // If previously saved model isn't in fetched list, pick the first valid fetched model
+            if (!textModels.includes(currentText) && textModels.length > 0) {
+                qwenTextModelSelect.selectedIndex = 0;
+                settings.qwenTextModel = qwenTextModelSelect.value;
+                AppStorage.saveSettings(settings);
+            }
+        }
+
+        // 2. Settings Image Model Dropdown
+        qwenImageModelSelect.innerHTML = '';
+        const finalImages = hasFetchedImage ? imageModels : defaultImage;
+        finalImages.forEach(id => {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = id;
+            if (id === currentImage) opt.selected = true;
+            qwenImageModelSelect.appendChild(opt);
+        });
+        if (currentImage && !finalImages.includes(currentImage)) {
+            qwenImageModelSelect.selectedIndex = 0;
+            settings.qwenImageModel = qwenImageModelSelect.value;
+            AppStorage.saveSettings(settings);
+        }
+
+        // 3. Update Step 1.5 and Step 3 Image Model dropdowns
+        updateMainImageDropdowns(finalImages);
+    }
+
+    function updateMainImageDropdowns(imageModels) {
+        const qwenOptGroupInitial = document.getElementById('qwenOptGroupInitial');
+        const qwenOptGroupStep3 = document.getElementById('qwenOptGroupStep3');
+
+        if (!qwenOptGroupInitial || !qwenOptGroupStep3) return;
+
+        qwenOptGroupInitial.innerHTML = '';
+        qwenOptGroupStep3.innerHTML = '';
+
+        imageModels.forEach(id => {
+            const opt1 = document.createElement('option');
+            opt1.value = id;
+            opt1.textContent = id;
+            qwenOptGroupInitial.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = id;
+            opt2.textContent = id;
+            qwenOptGroupStep3.appendChild(opt2);
+        });
+    }
+
+    async function fetchQwenModels() {
+        const apiKey = document.getElementById('qwenApiKey').value.trim();
+        let proxyUrl = document.getElementById('qwenProxyUrl').value.trim();
+
+        if (!apiKey) {
+            qwenModelsStatus.textContent = 'Please enter your Qwen API Key first.';
+            qwenModelsStatus.style.color = '#ef4444';
+            return;
+        }
+        if (!proxyUrl) {
+            qwenModelsStatus.textContent = 'Please enter your Qwen Proxy Worker URL first.';
+            qwenModelsStatus.style.color = '#ef4444';
+            return;
+        }
+
+        if (!proxyUrl.startsWith('http')) {
+            proxyUrl = 'https://' + proxyUrl;
+        }
+
+        qwenModelsStatus.textContent = 'Fetching available models from Qwen...';
+        qwenModelsStatus.style.color = 'var(--text-secondary)';
+        fetchQwenModelsBtn.disabled = true;
+
+        try {
+            const res = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({ type: 'models' })
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errText}`);
+            }
+
+            const data = await res.json();
+            const modelList = data.data || data.models || (Array.isArray(data) ? data : []);
+            const modelIds = modelList.map(m => (typeof m === 'string' ? m : m.id)).filter(Boolean);
+
+            if (modelIds.length === 0) {
+                throw new Error("No models returned in response.");
+            }
+
+            // Categorize into text models vs image models
+            const imageKeywords = ['image', 'wan', 'diffusion', 'visual', 'draw'];
+            const imageModels = [];
+            const textModels = [];
+
+            modelIds.forEach(id => {
+                const lower = id.toLowerCase();
+                if (imageKeywords.some(kw => lower.includes(kw))) {
+                    imageModels.push(id);
+                } else {
+                    textModels.push(id);
+                }
+            });
+
+            // Save to settings
+            settings.qwenAvailableModels = { textModels, imageModels };
+            AppStorage.saveSettings(settings);
+
+            populateModelDropdowns(textModels, imageModels);
+            qwenModelsStatus.textContent = `Found ${textModels.length} text models and ${imageModels.length} image models.`;
+            qwenModelsStatus.style.color = '#10b981';
+
+        } catch (err) {
+            console.error('Failed to fetch Qwen models:', err);
+            qwenModelsStatus.textContent = `Failed to fetch models: ${err.message}`;
+            qwenModelsStatus.style.color = '#ef4444';
+        } finally {
+            fetchQwenModelsBtn.disabled = false;
+        }
+    }
+
+    if (fetchQwenModelsBtn) {
+        fetchQwenModelsBtn.addEventListener('click', fetchQwenModels);
+    }
+
+    function syncImageProviderDropdowns(provider) {
+        const defaultChoice = provider === 'qwen' ? (settings.qwenImageModel || 'qwen-image-3-pro') : 'cloudflare-phoenix';
+        const initSelect = document.getElementById('initialImageProviderSelect');
+        const imgSelect = document.getElementById('imageProviderSelect');
+        if (provider === 'qwen') {
+            if (initSelect.value.startsWith('cloudflare-')) initSelect.value = defaultChoice;
+            if (imgSelect.value.startsWith('cloudflare-')) imgSelect.value = defaultChoice;
+        } else {
+            if (!initSelect.value.startsWith('cloudflare-')) initSelect.value = defaultChoice;
+            if (!imgSelect.value.startsWith('cloudflare-')) imgSelect.value = defaultChoice;
+        }
+    }
+
+    // Initialize dropdowns based on saved settings
+    if (settings.qwenAvailableModels) {
+        populateModelDropdowns(settings.qwenAvailableModels.textModels, settings.qwenAvailableModels.imageModels);
+    } else {
+        populateModelDropdowns([], []);
+    }
+    syncImageProviderDropdowns(settings.aiProvider || 'cloudflare');
+
+    aiProviderSelect.addEventListener('change', () => {
+        updateSettingsFormVisibility(aiProviderSelect.value);
+    });
+
     settingsBtn.addEventListener('click', () => {
+        aiProviderSelect.value = settings.aiProvider || 'cloudflare';
         document.getElementById('cloudflareWorkerUrl').value = settings.cloudflareWorkerUrl || '';
+        document.getElementById('qwenApiKey').value = settings.qwenApiKey || '';
+        document.getElementById('qwenProxyUrl').value = settings.qwenProxyUrl || '';
+        if (settings.qwenTextModel && qwenTextModelSelect) {
+            qwenTextModelSelect.value = settings.qwenTextModel;
+        }
+        if (settings.qwenImageModel && qwenImageModelSelect) {
+            qwenImageModelSelect.value = settings.qwenImageModel;
+        }
+        qwenModelsStatus.textContent = '';
+        updateSettingsFormVisibility(aiProviderSelect.value);
         settingsModal.classList.remove('hidden');
     });
 
@@ -91,11 +302,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     saveSettingsBtn.addEventListener('click', () => {
+        settings.aiProvider = aiProviderSelect.value;
         settings.cloudflareWorkerUrl = document.getElementById('cloudflareWorkerUrl').value.trim();
+        settings.qwenApiKey = document.getElementById('qwenApiKey').value.trim();
+        settings.qwenProxyUrl = document.getElementById('qwenProxyUrl').value.trim();
+        if (qwenTextModelSelect) settings.qwenTextModel = qwenTextModelSelect.value;
+        if (qwenImageModelSelect) settings.qwenImageModel = qwenImageModelSelect.value;
         settings.generationMode = generationModeSelect.value;
         AppStorage.saveSettings(settings);
 
         imageGenerator = new ImageGenerator(settings);
+        syncImageProviderDropdowns(settings.aiProvider);
 
         settingsModal.classList.add('hidden');
         showToast('Settings saved successfully!');
@@ -145,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 progList.appendChild(li);
 
                 const lesson = await ai.generateLesson(inputData[i].word, inputData[i].context, numExamples, gradeLevel);
-                
+
                 // Shuffle quiz choices and update correct_index
                 if (lesson.quiz && lesson.quiz.choices && lesson.quiz.choices.length > 0) {
                     const originalCorrect = lesson.quiz.choices[lesson.quiz.correct_index] || lesson.quiz.choices[0];
@@ -169,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (e) {
+            console.error('Lesson generation error:', e);
             showToast(e.message, true);
             switchStep(step2, step1);
         }
@@ -267,9 +485,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function preloadImages() {
-        const defaultProvider = document.getElementById('imageProviderSelect').value || 'cloudflare-phoenix';
+        const defaultProvider = document.getElementById('imageProviderSelect').value || (settings.aiProvider === 'qwen' ? 'qwen-image-3-pro' : 'cloudflare-phoenix');
         const lIdx = currentLessonIndex;
-        
+
         if (!currentLessons[lIdx]) return;
 
         const numExamples = currentLessons[lIdx].examples.length;
@@ -364,6 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
             generatedImages[currentLessonIndex][currentExampleIndex] = newUrl;
             loadCurrentExample();
         } catch (e) {
+            console.error('Regenerate image error:', e);
             showToast(e.message, true);
             document.getElementById('imageLoader').classList.add('hidden');
             btn.disabled = false;
@@ -394,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const list = document.getElementById('reviewList');
         list.innerHTML = ''; // Clear
         const manualUploadInput = document.getElementById('manualImageUpload');
-        
+
         let targetLIdx = -1;
         let targetEIdx = -1;
 
@@ -424,25 +643,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const content = document.createElement('div');
                 content.className = 'review-content';
-                
+
                 const captionContainer = document.createElement('div');
                 captionContainer.style = 'display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; width: 100%;';
-                
+
                 const captionDisplay = document.createElement('p');
                 captionDisplay.className = 'review-caption';
                 captionDisplay.textContent = `"${example.caption}"`;
                 captionDisplay.style = 'margin: 0; flex: 1;';
-                
+
                 const editBtnPencil = document.createElement('button');
                 editBtnPencil.innerHTML = '✏️';
                 editBtnPencil.style = 'background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 0;';
                 editBtnPencil.title = "Edit Caption";
-                
+
                 const captionEditInput = document.createElement('textarea');
                 captionEditInput.value = example.caption;
                 captionEditInput.style = 'flex: 1; display: none; font-family: inherit; font-size: 1rem; padding: 5px;';
                 captionEditInput.rows = 2;
-                
+
                 editBtnPencil.addEventListener('click', () => {
                     if (captionEditInput.style.display === 'none') {
                         captionDisplay.style.display = 'none';
@@ -460,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         editBtnPencil.title = "Edit Caption";
                     }
                 });
-                
+
                 captionContainer.appendChild(captionDisplay);
                 captionContainer.appendChild(captionEditInput);
                 captionContainer.appendChild(editBtnPencil);
@@ -499,7 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const quizContainer = document.createElement('div');
             quizContainer.className = 'quiz-review-section';
             quizContainer.style = 'margin-top: 1rem; padding: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;';
-            
+
             let choicesHtml = '';
             lesson.quiz.choices.forEach((choice, cIdx) => {
                 const isChecked = cIdx === lesson.quiz.correct_index ? 'checked' : '';
@@ -520,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="margin-bottom: 0.5rem;"><strong>Choices:</strong> (Select the correct answer)</div>
                 ${choicesHtml}
             `;
-            
+
             section.appendChild(quizContainer);
             list.appendChild(section);
         });
@@ -538,12 +757,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLessons.forEach((lesson, lIdx) => {
             const qInput = document.getElementById(`review-quiz-q-${lIdx}`);
             if (qInput) lesson.quiz.question = qInput.value;
-            
+
             lesson.quiz.choices = lesson.quiz.choices.map((_, cIdx) => {
                 const cInput = document.getElementById(`review-quiz-c-${lIdx}-${cIdx}`);
                 return cInput ? cInput.value : lesson.quiz.choices[cIdx];
             });
-            
+
             const selectedRadio = document.querySelector(`input[name="review-quiz-correct-${lIdx}"]:checked`);
             if (selectedRadio) {
                 lesson.quiz.correct_index = parseInt(selectedRadio.value);
@@ -570,15 +789,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showToast(message, isError = false) {
+        if (isError) {
+            console.error('[VocabPlanner Error]:', message);
+        }
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
         toast.className = `toast show ${isError ? 'error' : ''}`;
         toast.textContent = message;
         container.appendChild(toast);
 
+        const duration = isError ? 6000 : 4000;
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
-        }, 4000);
+        }, duration);
     }
 });
