@@ -4,34 +4,38 @@ class AIProvider {
     }
 
     async generateLesson(word, contextSentence, numExamples = 3, gradeLevel = "Grade 3") {
-        let systemPrompt = `You are an expert curriculum designer creating a vocabulary-learning lesson for primary-school students.
-The target audience is ${gradeLevel} students. You MUST tailor the reading level, sentence complexity, and vocabulary in the captions and quiz questions to precisely match this grade level. It is critical that the language is accessible for ESL students at this grade level.
+        let systemPrompt = `You are an expert curriculum designer creating a vocabulary-learning lesson for primary-school students based on semantic reasoning and inference.
+The target audience is ${gradeLevel} students. You MUST tailor sentence complexity and vocabulary in captions and quiz questions to precisely match this grade level, ensuring accessibility for ESL students.
 
-The purpose is to help students infer the meaning of a vocabulary word by seeing it represented in multiple different situations.
+PEDAGOGICAL PURPOSE:
+Students infer the meaning of the target vocabulary word by observing ${numExamples} different visual situations. The captions are hidden during the lesson and only revealed as 'the answer' once students have reasoned about what the image shows.
 
-The teacher may provide a sentence from a story or reading passage where the vocabulary word appears. If a context sentence is provided, use it to determine the intended meaning or sense of the target word.
-The supplied context sentence is a semantic anchor, not a template. Do NOT simply reproduce the situation from the supplied sentence.
-Instead, identify the underlying meaning demonstrated by the word in that sentence and generate ${numExamples} genuinely different situations that demonstrate the same meaning.
-The ${numExamples} situations should deliberately expand beyond the original story context so that students learn how the word applies in different circumstances.
+CONTEXT HANDLING:
+- If a context sentence is provided, use it as a semantic anchor to determine the intended meaning, then apply that concept to fresh, unrelated contexts.
+- If no context sentence is provided, use the word's most common ${gradeLevel}-appropriate meaning and show how it applies across different areas of a student's world.
 
-For each situation generate:
-1. A highly-detailed visual description of the scene. This will be used as a prompt for an AI image generator. Include details about the subject, their exact action or expression, the environment, and the lighting. Do NOT use the vocabulary word in the visual description. Do NOT prepend the visual description with "A photograph of" or "An image of" (this is handled elsewhere).
-2. A short student-friendly caption describing the situation, written at a ${gradeLevel} reading level.
+FOR EACH OF THE ${numExamples} EXAMPLES:
+1. caption (The Intended Inference):
+   - This serves as the target success criteria for the image—what a student should conclude when looking at the picture.
+   - Describe the observable action, state, or quality demonstrating the concept at a ${gradeLevel} reading level.
+   - CRITICAL: Never use the target vocabulary word or directly define it.
+2. visual_description:
+   - A concrete, highly-detailed scene engineered specifically so that a student can visually arrive at the intended inference.
+   - Describe the subjects, their exact action or expression, the environment, and lighting. Do NOT use the target word or phrases like "A photograph of" or "An image of".
 
-CRITICAL RULES:
-- The caption must NOT use the target vocabulary word.
-- The caption must NOT directly define the target word.
-- The ${numExamples} examples should be meaningfully different rather than ${numExamples} variations of the same situation.
-- Use concrete situations that could realistically be represented by a photograph or illustration.
+SCENARIO DIVERSITY:
+- Each of the ${numExamples} examples must draw from a completely different sphere of a ${gradeLevel} student's world.
+- Do NOT reuse the same narrative formula or interpersonal dynamic.
 
-Finally, generate a multiple-choice question to test if the student understands the underlying meaning.
-The question MUST exactly be "The meaning of [vocabulary word] is..." (replacing [vocabulary word] with the actual word).
-The 4 choices MUST be sentence completions written at a ${gradeLevel} reading level.
-
-CRITICAL QUIZ RULE:
-The correct choice must seamlessly combine the core dictionary definition and the specific visual details from the generated images.
-For example, if the word is 'equator' and the images show hot places, the correct answer should be something like: "an imaginary line around the middle of the Earth where the weather is usually very hot and sunny."
-Ensure all 4 choices are roughly the same length and follow a similar structure. Do NOT use brackets like [Core Definition] or [Detail] in your output. Do NOT just provide a dictionary definition of the word.
+QUIZ GUIDELINES:
+Generate a multiple-choice question to test if the student understands the underlying meaning.
+- The question MUST exactly be "The meaning of [vocabulary word] is..." (replacing [vocabulary word] with the actual word).
+- The 4 choices MUST be sentence completions written at a ${gradeLevel} reading level, roughly equal in length.
+- The CORRECT choice must be a clear, student-friendly explanation of the word's core meaning that naturally reflects the common idea across all examples.
+- The 3 DISTRACTORS (incorrect choices) must be plausible student misconceptions, opposite meanings, or related but incorrect actions.
+- QUIZ DISTRACTOR RULES:
+  * Distractors must NEVER repeat the correct definition or share the opening phrasing of the correct choice.
+  * Do NOT pad distractors with lists of unrelated background objects from the scenes.
 
 Return valid JSON exactly matching this structure, without markdown wrappers if possible:
 {
@@ -39,8 +43,8 @@ Return valid JSON exactly matching this structure, without markdown wrappers if 
   "context_sentence": "...",
   "examples": [
     {
-      "visual_description": "...",
-      "caption": "..."
+      "caption": "...",
+      "visual_description": "..."
     }
   ],
   "quiz": {
@@ -119,7 +123,7 @@ Return valid JSON exactly matching this structure, without markdown wrappers if 
 
     async _callCloudflare(systemPrompt, userPrompt) {
         if (!this.settings.cloudflareWorkerUrl) {
-             throw new Error("Cloudflare Worker URL is missing. Please configure it in Settings.");
+            throw new Error("Cloudflare Worker URL is missing. Please configure it in Settings.");
         }
 
         let url = this.settings.cloudflareWorkerUrl;
@@ -146,7 +150,7 @@ Return valid JSON exactly matching this structure, without markdown wrappers if 
         }
 
         const data = await response.json();
-        
+
         // Return text completion
         // Return text completion parsed as JSON
         if (data.response) {
