@@ -82,8 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Settings Modal ---
     settingsBtn.addEventListener('click', () => {
-        document.getElementById('openRouterKey').value = settings.openRouterKey || '';
-        document.getElementById('aiModel').value = settings.aiModel || 'openrouter/free';
         document.getElementById('cloudflareWorkerUrl').value = settings.cloudflareWorkerUrl || '';
         settingsModal.classList.remove('hidden');
     });
@@ -93,8 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     saveSettingsBtn.addEventListener('click', () => {
-        settings.openRouterKey = document.getElementById('openRouterKey').value.trim();
-        settings.aiModel = document.getElementById('aiModel').value.trim();
         settings.cloudflareWorkerUrl = document.getElementById('cloudflareWorkerUrl').value.trim();
         settings.generationMode = generationModeSelect.value;
         AppStorage.saveSettings(settings);
