@@ -10,7 +10,7 @@ class AppStorage {
             aiProvider: 'cloudflare',
             cloudflareWorkerUrl: '',
             qwenApiKey: '',
-            qwenProxyUrl: '',
+            qwenProxyUrl: 'https://qwenproxy.philkey.workers.dev/',
             qwenTextModel: 'qwen3.7-plus',
             qwenImageModel: 'qwen-image-3-pro',
             qwenAvailableModels: null,
